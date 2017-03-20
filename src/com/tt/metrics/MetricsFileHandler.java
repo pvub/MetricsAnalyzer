@@ -13,7 +13,7 @@ import java.util.stream.Stream;
  * @author Udai
  */
 public class MetricsFileHandler {
-    private static String s_expectedPattern = "yyyy-dd-MM hh:mm:ss";
+    private static String s_expectedPattern = "yyyy-MM-dd hh:mm:ss";
     private static SimpleDateFormat s_formatter = new SimpleDateFormat(s_expectedPattern);
     private StatLine m_multistatline = null;
     private Date     m_summarydate = null;
@@ -22,7 +22,7 @@ public class MetricsFileHandler {
     {
     }
     
-    public Stats load(MetricsFile mFile, Stats container)
+    public Stats load(MetricsFile mFile, MetricsConfig config, Stats container)
     {
         System.out.println("Loading: " + mFile.getFilename());
         try (Stream<String> stream = Files.lines(Paths.get(mFile.getFilename()))) 
@@ -30,11 +30,11 @@ public class MetricsFileHandler {
             stream.forEach((String str) -> {
                 if (mFile.getType() == MetricsFile.MetricType.SUMMARY)
                 {
-                    ParseLineSummary(str, container, mFile);
+                    ParseLineSummary(config, str, container, mFile);
                 }
                 else
                 {
-                    ParseLine(str, container, mFile);
+                    ParseLine(config, str, container, mFile);
                 }
             });
 
@@ -42,7 +42,7 @@ public class MetricsFileHandler {
             e.printStackTrace();
         }
         
-        if (mFile.getType() == MetricsFile.MetricType.SUMMARY)
+        if (mFile.getType() == MetricsFile.MetricType.SUMMARY && m_multistatline != null)
         {
             System.out.println("Stat Line: " + m_multistatline.toString());
             container.addMinuteStat(m_multistatline);            
@@ -51,31 +51,43 @@ public class MetricsFileHandler {
         return container;
     }
     
-    private void ParseLine(String input, Stats stats, MetricsFile mFile)
+    private boolean ParseLine(MetricsConfig config, String input, Stats stats, MetricsFile mFile)
     {
+        Date dt = null;
         String[] pairs = input.split(" ");
+
+        // Get Time from Metrics line
+        try
+        {
+            dt = s_formatter.parse(pairs[0] + " " + pairs[1]);
+        } catch (ParseException e) {
+            System.out.println("Date parse error: " + e.getMessage());
+        }
+        // Filter for Search dates
+        if (!config.isBetweenSearchDates(dt))
+        {
+            return false;
+        }
+
         int index = 0;
-        String dateStr = "", timeStr = "";
         StatLine statline = new StatLine(mFile);
+        statline.setDate(dt);
         for (String pair : pairs) 
         {
-            if (index == 0)
+            if (index <= 1)
             {
-                dateStr = pair;
-            }
-            else if (index == 1)
-            {
-                timeStr = pair;
+                index++;
+                continue;
             }
             else
             {
                 String[] parts = pair.split("=");
                 String key = parts[0];
                 String value = parts[1];
-                if (mFile.hasField(key))
+                if (mFile.hasField(key, mFile.getFilekey()))
                 {
-                    DataPoint dp = DataPoint.getDataPoint(key);
-                    if (dp != DataPoint.MAX)
+                    DataPoint dp = config.getDataPoints().getDataPoint(mFile.getFilekey() + "-" + key);
+                    if (dp.getIndex() != DataPoints.getMax())
                     {
                         double val = Double.parseDouble(value);
                         statline.setDataPoint(dp, val);
@@ -84,47 +96,48 @@ public class MetricsFileHandler {
             }
             index++;
         }
+        System.out.println("Stat Line: " + statline.toString());
+        stats.addMinuteStat(statline);
+        
+        return true;
+    }
+
+    private boolean ParseLineSummary(MetricsConfig config, String input, Stats stats, MetricsFile mFile)
+    {
+        Date dt = null;
+        String[] pairs = input.split(" ");
+
+        // Get Time from Metrics line
         try
         {
-            Date dt = s_formatter.parse(dateStr + " " + timeStr);
-            statline.setDate(dt);
-            System.out.println("Stat Line: " + statline.toString());
-            stats.addMinuteStat(statline);
+            dt = s_formatter.parse(pairs[0] + " " + pairs[1]);
         } catch (ParseException e) {
             System.out.println("Date parse error: " + e.getMessage());
         }
-
-    }
-
-    private void ParseLineSummary(String input, Stats stats, MetricsFile mFile)
-    {
-        String[] pairs = input.split(" ");
-        String dateStr = pairs[0];
-        String timeStr = pairs[1];
-        try
+        // Filter for Search dates
+        if (!config.isBetweenSearchDates(dt))
         {
-            Date dt = s_formatter.parse(dateStr + " " + timeStr);
-            if (m_summarydate == null)
+            return false;
+        }
+
+        if (m_summarydate == null)
+        {
+            m_summarydate = dt;
+            m_multistatline = new StatLine(mFile);
+            m_multistatline.setDate(dt);
+        }
+        else
+        {
+            long existingminute = m_summarydate.getTime() / (1000 * 60);
+            long newminute = dt.getTime() / (1000 * 60);
+            if (newminute != existingminute)
             {
+                System.out.println("Stat Line: " + m_multistatline.toString());
+                stats.addMinuteStat(m_multistatline);
                 m_summarydate = dt;
                 m_multistatline = new StatLine(mFile);
                 m_multistatline.setDate(dt);
             }
-            else
-            {
-                long existingminute = m_summarydate.getTime() / (1000 * 60);
-                long newminute = dt.getTime() / (1000 * 60);
-                if (newminute != existingminute)
-                {
-                    System.out.println("Stat Line: " + m_multistatline.toString());
-                    stats.addMinuteStat(m_multistatline);
-                    m_summarydate = dt;
-                    m_multistatline = new StatLine(mFile);
-                    m_multistatline.setDate(dt);
-                }
-            }
-        } catch (ParseException e) {
-            System.out.println("Date parse error: " + e.getMessage());
         }
 
         for (String pair : pairs) 
@@ -135,15 +148,17 @@ public class MetricsFileHandler {
             }
             String key = parts[0];
             String value = parts[1];
-            if (mFile.hasField(key))
+            if (mFile.hasField(key, mFile.getFilekey()))
             {
-                DataPoint dp = DataPoint.getDataPoint(key);
-                if (dp != DataPoint.MAX)
+                DataPoint dp = config.getDataPoints().getDataPoint(mFile.getFilekey() + "-" + key);
+                if (dp.getIndex() != DataPoints.getMax())
                 {
                     double val = Double.parseDouble(value);
                     m_multistatline.setDataPoint(dp, val);
                 }
             }
         }
+        
+        return true;
     }
 }
