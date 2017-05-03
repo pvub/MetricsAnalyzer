@@ -23,7 +23,7 @@ public class MultiMetricField extends MetricField
     {
         return ds.getMean();
     }
-    public double getSummaryValue(MetricsFile.SummaryType mtype)
+    public double getSummaryValue(MetricsSource.SummaryType mtype)
     {
         double value = 0.0;
         switch (mtype)

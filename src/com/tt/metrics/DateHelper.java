@@ -11,7 +11,7 @@ public class DateHelper {
     // Milliseconds
     private static int MINUTE_COUNT = 1000 * 60;
     // Date Time format from Log lines
-    private static String s_expectedPattern = "yyyy-MM-dd hh:mm:ss";
+    private static String s_expectedPattern = "yyyy-MM-dd HH:mm:ss";
     // Formatter to use the set pattern
     private static SimpleDateFormat s_formatter = new SimpleDateFormat(s_expectedPattern);
     

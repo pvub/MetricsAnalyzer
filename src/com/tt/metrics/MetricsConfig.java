@@ -13,25 +13,7 @@ import java.util.Properties;
  * @author Udai
  */
 public class MetricsConfig {
-    
-    private static String METRICS_KEY = "tt.metrics.";
-    private static String METRICS_START = "starttime";
-    private static String METRICS_END = "endtime";
-    private static String METRICS_OUTPUTFILE = "outputfile";
-    private static String METRICS_FILES = "tt.metrics.files";
-    private static String METRICS_FILE_KEY = "tt.metrics.file.";
-    private static String METRICS_FILE_PATH = "path";
-    private static String METRICS_FILE_TYPE = "type";
-    private static String METRICS_FILE_FIELDS = "fields";
-    private static String METRICS_TYPE_SINGLE = "single";
-    private static String METRICS_TYPE_SUMMARY = "summary";
-    private static String METRICS_FIELD_SUMMARY = "summary";
-    private static String METRICS_SUMMARY_COUNT = "count";
-    private static String METRICS_SUMMARY_SUM = "sum";
-    private static String METRICS_SUMMARY_MEAN = "mean";
-    private static String METRICS_SUMMARY_STDDEV = "stddev";
-    private static String METRICS_SUMMARY_VARIANCE = "variance";
-    
+        
     private String m_filepath;
     private Properties m_props;
     private DataPoints m_dataPoints;
@@ -41,7 +23,7 @@ public class MetricsConfig {
     private Date m_endTime;
     private String m_outfilepath = null;
     
-    private static String s_expectedPattern = "yyyy-MM-dd hh:mm:ss";
+    private static String s_expectedPattern = "yyyy-MM-dd hh:mm:ss z";
     private static SimpleDateFormat s_formatter = new SimpleDateFormat(s_expectedPattern);
 
     public MetricsConfig() {
@@ -70,17 +52,28 @@ public class MetricsConfig {
         }
     }
     
-    public ArrayList<MetricsFile> getMetricsFileConfig() {
-        
-        ArrayList<MetricsFile> files = new ArrayList<MetricsFile>();
-        ArrayList<String> filekeys = getPropertyValues(METRICS_FILES);
-        for (String filekey : filekeys) {
-            MetricsFile config = getMetricsFileConfig(filekey);
-            files.add(config);
-        }
-        return files;
-    }
+//    public ArrayList<MetricsSource> getMetricsSourceConfig() {
+//        
+//        ArrayList<MetricsSource> sources = new ArrayList<MetricsSource>();
+//        ArrayList<String> filekeys = getPropertyValues(Definitions.METRICS_FILES);
+//        for (String filekey : filekeys) {
+//            MetricsSource config = generateMetricsFile(filekey);
+//            sources.add(config);
+//        }
+//        return sources;
+//    }
     
+    public ArrayList<MetricsHandler> getMetricsHandlers() {
+        
+        ArrayList<MetricsHandler> handlers = new ArrayList<MetricsHandler>();
+        ArrayList<String> filekeys = getPropertyValues(Definitions.METRICS_FILES);
+        for (String filekey : filekeys) {
+            MetricsHandler handler = generateMetricsHandler(filekey);
+            handlers.add(handler);
+        }
+        return handlers;
+    }
+
     private ArrayList<String> getPropertyValues(String key) {
         ArrayList<String> vals = new ArrayList<String>();
         String val = m_props.getProperty(key);
@@ -97,62 +90,167 @@ public class MetricsConfig {
         return m_props.getProperty(key);
     }
     
-    private MetricsFile getMetricsFileConfig(String filekey) {
-        String path = getProperty(METRICS_FILE_KEY + filekey + "." + METRICS_FILE_PATH);
-        String type = getProperty(METRICS_FILE_KEY + filekey + "." + METRICS_FILE_TYPE);
-        MetricsFile.MetricType mtype = getMetricsFileType(type);
-        MetricsFile mFile = new MetricsFile(path, filekey, mtype);
-        String fields = getProperty(METRICS_FILE_KEY + filekey + "." + METRICS_FILE_FIELDS);
+    public MetricsHandler generateMetricsHandler(String filekey)
+    {
+        String source   = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + Definitions.METRICS_SOURCE);
+        String type     = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + Definitions.METRICS_FILE_TYPE);
+        MetricsSource.MetricType mtype = getMetricsFileType(type);
+        MetricsSource.MetricSource msource = getMetricsSource(source);
+        MetricsHandler mHandler = null;
+        switch (msource)
+        {
+            case FILE:
+                mHandler = generateMetricsHandlerForFileSource(filekey, mtype, msource);
+                break;
+            case SPLUNK:
+                mHandler = generateMetricsHandlerForSplunkSource(filekey, mtype, msource);
+                break;
+            case GRAPHITE:
+                mHandler = generateMetricsHandlerForGraphiteSource(filekey, mtype, msource);
+                break;
+        }
+        return mHandler;
+    }
+    
+    public MetricsHandler generateMetricsHandlerForFileSource( String filekey
+                                                            , MetricsSource.MetricType mtype
+                                                            , MetricsSource.MetricSource msource)
+    {
+        MetricsFileSource mfile = new MetricsFileSource(filekey, mtype, msource);
+        String path     = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + Definitions.METRICS_FILE_PATH);
+        mfile.setFilename(path);
+        
+        String fields = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + Definitions.METRICS_FILE_FIELDS);
         String fields_array[] = fields.split("\\|");
         for (String field : fields_array) 
         {
             m_dataPoints.addField(filekey, field);
-            if (mtype == MetricsFile.MetricType.SINGLE) {
-                mFile.addField(field, filekey, m_dataPoints);
+            if (mfile.getType() == MetricsSource.MetricType.SINGLE) {
+                mfile.addField(field, filekey, m_dataPoints);
             } else {
-                String summarytype = getProperty(METRICS_FILE_KEY + filekey + "." + field + "." + METRICS_FIELD_SUMMARY);
-                MetricsFile.SummaryType stype = getMetricsFieldSummaryType(summarytype);
-                mFile.addField(field, filekey, m_dataPoints, stype);
+                String summarytype = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_SUMMARY);
+                MetricsSource.SummaryType stype = getMetricsFieldSummaryType(summarytype);
+                mfile.addField(field, filekey, m_dataPoints, stype);
             }
         }
-        return mFile;
+        
+        MetricsFileHandler handler = (MetricsFileHandler) MetricsHandlerFactory.getHandler(mfile);
+        
+        return handler;
     }
     
-    private MetricsFile.MetricType getMetricsFileType(String type) {
-        MetricsFile.MetricType mtype = MetricsFile.MetricType.SINGLE;
-        if (type.equalsIgnoreCase(METRICS_TYPE_SINGLE)) {
-            mtype = MetricsFile.MetricType.SINGLE;
+    public MetricsHandler generateMetricsHandlerForSplunkSource(String filekey
+                                                            , MetricsSource.MetricType mtype
+                                                            , MetricsSource.MetricSource msource)
+    {
+        MetricsSplunkSource mfile = new MetricsSplunkSource(filekey, mtype, msource);
+        String url     = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + Definitions.URL);
+        String query   = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + Definitions.QUERY);
+        String user    = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + Definitions.USERNAME);
+        String pwd     = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + Definitions.PASSWORD);
+        mfile.setUrl(url);
+        mfile.setQuery(query);
+        mfile.setUsername(user);
+        mfile.setPassword(pwd);
+        
+        String fields = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + Definitions.METRICS_FILE_FIELDS);
+        String fields_array[] = fields.split("\\|");
+        for (String field : fields_array) 
+        {
+            m_dataPoints.addField(filekey, field);
+            String fieldpattern = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_PATTERN);
+            if (mfile.getType() == MetricsSource.MetricType.SINGLE) {
+                // Unsupported
+            } else {
+                String summarytype = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_SUMMARY);
+                MetricsSource.SummaryType stype = getMetricsFieldSummaryType(summarytype);
+                mfile.addFieldWithPattern(field, fieldpattern, filekey, m_dataPoints, stype);
+            }
         }
-        if (type.equalsIgnoreCase(METRICS_TYPE_SUMMARY)) {
-            mtype = MetricsFile.MetricType.SUMMARY;
+        
+        SplunkHandler handler = (SplunkHandler) MetricsHandlerFactory.getHandler(mfile);
+        
+        return handler;
+    }
+    
+    public MetricsHandler generateMetricsHandlerForGraphiteSource(String filekey
+                                                            , MetricsSource.MetricType mtype
+                                                            , MetricsSource.MetricSource msource)
+    {
+        MetricsGraphiteSource mfile = new MetricsGraphiteSource(filekey, mtype, msource);
+        String url     = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + Definitions.URL);
+        String user    = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + Definitions.USERNAME);
+        String pwd     = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + Definitions.PASSWORD);
+        mfile.setUrl(url);
+        mfile.setUsername(user);
+        mfile.setPassword(pwd);
+        
+        String fields = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + Definitions.METRICS_FILE_FIELDS);
+        String fields_array[] = fields.split("\\|");
+        for (String field : fields_array) 
+        {
+            m_dataPoints.addField(filekey, field);
+            String fieldquery = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_QUERY);
+            if (mfile.getType() == MetricsSource.MetricType.SINGLE) {
+                // Unsupported
+            } else {
+                String summarytype = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_SUMMARY);
+                MetricsSource.SummaryType stype = getMetricsFieldSummaryType(summarytype);
+                mfile.addFieldWithQuery(field, fieldquery, filekey, m_dataPoints, stype);
+            }
+        }
+        
+        GraphiteRestHandler handler = (GraphiteRestHandler) MetricsHandlerFactory.getHandler(mfile);
+        
+        return handler;
+    }
+    
+    private MetricsSource.MetricType getMetricsFileType(String type) {
+        MetricsSource.MetricType mtype = MetricsSource.MetricType.SINGLE;
+        if (type.equalsIgnoreCase(Definitions.METRICS_TYPE_SINGLE)) {
+            mtype = MetricsSource.MetricType.SINGLE;
+        }
+        if (type.equalsIgnoreCase(Definitions.METRICS_TYPE_SUMMARY)) {
+            mtype = MetricsSource.MetricType.SUMMARY;
         }
         return mtype;
     }
     
-    private MetricsFile.SummaryType getMetricsFieldSummaryType(String type) {
-        MetricsFile.SummaryType stype = MetricsFile.SummaryType.COUNT;
-        if (type.equalsIgnoreCase(METRICS_SUMMARY_COUNT)) {
-            stype = MetricsFile.SummaryType.COUNT;
+    private MetricsSource.MetricSource getMetricsSource(String source) {
+        MetricsSource.MetricSource msource = MetricsSource.MetricSource.FILE;
+        if (source.equalsIgnoreCase(Definitions.METRICS_SOURCE_SPLUNK)) {
+            msource = MetricsSource.MetricSource.SPLUNK;
         }
-        if (type.equalsIgnoreCase(METRICS_SUMMARY_SUM)) {
-            stype = MetricsFile.SummaryType.SUM;
+        else if (source.equalsIgnoreCase(Definitions.METRICS_SOURCE_GRAPHITE)) {
+            msource = MetricsSource.MetricSource.GRAPHITE;
         }
-        if (type.equalsIgnoreCase(METRICS_SUMMARY_MEAN)) {
-            stype = MetricsFile.SummaryType.MEAN;
+        return msource;
+    }
+    
+    private MetricsSource.SummaryType getMetricsFieldSummaryType(String type) {
+        MetricsSource.SummaryType stype = MetricsSource.SummaryType.COUNT;
+        if (type.equalsIgnoreCase(Definitions.METRICS_SUMMARY_COUNT)) {
+            stype = MetricsSource.SummaryType.COUNT;
         }
-        if (type.equalsIgnoreCase(METRICS_SUMMARY_STDDEV)) {
-            stype = MetricsFile.SummaryType.STDDEV;
+        if (type.equalsIgnoreCase(Definitions.METRICS_SUMMARY_SUM)) {
+            stype = MetricsSource.SummaryType.SUM;
         }
-        if (type.equalsIgnoreCase(METRICS_SUMMARY_VARIANCE)) {
-            stype = MetricsFile.SummaryType.VARIANCE;
+        if (type.equalsIgnoreCase(Definitions.METRICS_SUMMARY_MEAN)) {
+            stype = MetricsSource.SummaryType.MEAN;
+        }
+        if (type.equalsIgnoreCase(Definitions.METRICS_SUMMARY_STDDEV)) {
+            stype = MetricsSource.SummaryType.STDDEV;
+        }
+        if (type.equalsIgnoreCase(Definitions.METRICS_SUMMARY_VARIANCE)) {
+            stype = MetricsSource.SummaryType.VARIANCE;
         }
         return stype;
     }
     
     private void setStartAndEndDates()
     {
-        String start = getProperty(METRICS_KEY + METRICS_START);
-        String end = getProperty(METRICS_KEY + METRICS_END);
+        String start = getProperty(Definitions.METRICS_KEY + Definitions.METRICS_START);
+        String end = getProperty(Definitions.METRICS_KEY + Definitions.METRICS_END);
         try
         {
             Date dtStart = s_formatter.parse(start);
@@ -174,16 +272,30 @@ public class MetricsConfig {
     
     private void setOutputFile()
     {
-        String outfile = getProperty(METRICS_KEY + METRICS_OUTPUTFILE);
+        String outfile = getProperty(Definitions.METRICS_KEY + Definitions.METRICS_OUTPUTFILE);
         if (outfile != null && outfile.trim().length() > 0)
         {
             m_outfilepath = outfile;
         }
     }
     
+    public String getStartDateStr()
+    {
+        String start = getProperty(Definitions.METRICS_KEY + Definitions.METRICS_START);
+        return start;
+    }
+    public String getEndDateStr()
+    {
+        String end = getProperty(Definitions.METRICS_KEY + Definitions.METRICS_END);
+        return end;
+    }
     public Date getStartTime()
     {
         return m_startTime;
+    }
+    public Date getEndTime()
+    {
+        return m_endTime;
     }
     public long getStartMinute()
     {
@@ -203,6 +315,13 @@ public class MetricsConfig {
             && dt.before(m_endTime))
             || (dt.getTime() - m_startTime.getTime() > (-1000 * 60)
             && dt.getTime() - m_endTime.getTime() < (1000 * 60));
+    }
+    public String getFromattedSearchDates()
+    {
+        StringBuilder sb = new StringBuilder();
+        return sb.append(" Start=").append(s_formatter.format(m_startTime))
+                 .append(" End=").append(s_formatter.format(m_endTime))
+                 .toString();
     }
     
     public String getOutputFilepath()

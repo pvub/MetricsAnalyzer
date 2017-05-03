@@ -15,15 +15,15 @@ public class StatLine {
     private Date     m_date = null;
     private long     m_minute = 0;
     private HashSet<DataPoint> m_setpoints = null;
-    private MetricsFile.MetricType m_metricType;
-    private MetricsFile m_metricsFile;
+    private MetricsSource.MetricType m_metricType;
+    private MetricsSource m_metricsFile;
     
-    public StatLine(MetricsFile mFile) 
+    public StatLine(MetricsSource mFile) 
     {
         m_metricType = mFile.getType();
         m_setpoints = mFile.getDataPoints();
         m_dataPoints = new double[DataPoints.getMax()];
-        if (mFile.getType() == MetricsFile.MetricType.SUMMARY)
+        if (mFile.getType() == MetricsSource.MetricType.SUMMARY)
         {
             m_summaryPoints = new MultiMetricField[DataPoints.getMax()];
             int index = 0;
@@ -54,7 +54,7 @@ public class StatLine {
     
     public void setDataPoint(DataPoint point, double value)
     {
-        if (m_metricType == MetricsFile.MetricType.SUMMARY)
+        if (m_metricType == MetricsSource.MetricType.SUMMARY)
         {
             m_summaryPoints[point.getIndex()].addValue(value);
         }
@@ -66,7 +66,7 @@ public class StatLine {
     
     public double getDataPointValue(DataPoint point)
     {
-        if (m_metricType == MetricsFile.MetricType.SUMMARY)
+        if (m_metricType == MetricsSource.MetricType.SUMMARY)
         {
             return m_summaryPoints[point.getIndex()].getSummaryValue(m_metricsFile.getSummaryTypeForDataPoint(point));
         }
@@ -76,7 +76,7 @@ public class StatLine {
         }
     }
     
-    public double getSummaryValue(DataPoint point, MetricsFile.SummaryType mtype)
+    public double getSummaryValue(DataPoint point, MetricsSource.SummaryType mtype)
     {
         return m_summaryPoints[point.getIndex()].getSummaryValue(mtype);
     }
@@ -109,7 +109,7 @@ public class StatLine {
     {
         StringBuilder sb = new StringBuilder();
         sb.append(DateHelper.format(m_date)).append(" ");
-        if (m_metricType == MetricsFile.MetricType.SUMMARY)
+        if (m_metricType == MetricsSource.MetricType.SUMMARY)
         {
             for (DataPoint dp : m_setpoints)
             {

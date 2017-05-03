@@ -34,12 +34,12 @@ public class MetricsAnalytics
             System.out.println("No outputfile specified");
             return;
         }
-        ArrayList<MetricsFile> metricsfiles = config.getMetricsFileConfig();
+        
+        ArrayList<MetricsHandler> metricshandlers = config.getMetricsHandlers();
         Stats container = new Stats(config);
-        for (MetricsFile mFile : metricsfiles)
+        for (MetricsHandler mHandler : metricshandlers)
         {
-            MetricsFileHandler handler = new MetricsFileHandler();
-            container = handler.load(mFile, config, container);
+            container = mHandler.load(config, container);
         }
         
         ArrayList<String> statlist = new ArrayList<String>();

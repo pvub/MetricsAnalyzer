@@ -12,29 +12,33 @@ import java.util.stream.Stream;
  * Read a Metrics File, and load the fields into a Stats container
  * @author Udai
  */
-public class MetricsFileHandler {
+public class MetricsFileHandler implements MetricsHandler 
+{
     private static String s_expectedPattern = "yyyy-MM-dd hh:mm:ss";
     private static SimpleDateFormat s_formatter = new SimpleDateFormat(s_expectedPattern);
+    private MetricsFileSource m_sourceconfig = null;
     private StatLine m_multistatline = null;
     private Date     m_summarydate = null;
     
-    public MetricsFileHandler()
+    public MetricsFileHandler(MetricsFileSource sourceconfig)
     {
+        m_sourceconfig = sourceconfig;
     }
     
-    public Stats load(MetricsFile mFile, MetricsConfig config, Stats container)
+    @Override
+    public Stats load(MetricsConfig config, Stats container)
     {
-        System.out.println("Loading: " + mFile.getFilename());
-        try (Stream<String> stream = Files.lines(Paths.get(mFile.getFilename()))) 
+        System.out.println("Loading: " + m_sourceconfig.getFilename());
+        try (Stream<String> stream = Files.lines(Paths.get(m_sourceconfig.getFilename()))) 
         {
             stream.forEach((String str) -> {
-                if (mFile.getType() == MetricsFile.MetricType.SUMMARY)
+                if (m_sourceconfig.getType() == MetricsSource.MetricType.SUMMARY)
                 {
-                    ParseLineSummary(config, str, container, mFile);
+                    ParseLineSummary(config, str, container, m_sourceconfig);
                 }
                 else
                 {
-                    ParseLine(config, str, container, mFile);
+                    ParseLine(config, str, container, m_sourceconfig);
                 }
             });
 
@@ -42,7 +46,7 @@ public class MetricsFileHandler {
             e.printStackTrace();
         }
         
-        if (mFile.getType() == MetricsFile.MetricType.SUMMARY && m_multistatline != null)
+        if (m_sourceconfig.getType() == MetricsSource.MetricType.SUMMARY && m_multistatline != null)
         {
             System.out.println("Stat Line: " + m_multistatline.toString());
             container.addMinuteStat(m_multistatline);            
@@ -51,7 +55,7 @@ public class MetricsFileHandler {
         return container;
     }
     
-    private boolean ParseLine(MetricsConfig config, String input, Stats stats, MetricsFile mFile)
+    private boolean ParseLine(MetricsConfig config, String input, Stats stats, MetricsSource mFile)
     {
         Date dt = null;
         String[] pairs = input.split(" ");
@@ -102,7 +106,7 @@ public class MetricsFileHandler {
         return true;
     }
 
-    private boolean ParseLineSummary(MetricsConfig config, String input, Stats stats, MetricsFile mFile)
+    private boolean ParseLineSummary(MetricsConfig config, String input, Stats stats, MetricsSource mFile)
     {
         Date dt = null;
         String[] pairs = input.split(" ");

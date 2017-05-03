@@ -25,7 +25,7 @@ public class Stats {
         m_stat_lines = new ArrayList<StatLine>();
     }
     
-    private int getMinuteIndex(long minute)
+    public int getMinuteIndex(long minute)
     {
         return (int) (minute - m_beginning_minute);
     }
@@ -33,7 +33,7 @@ public class Stats {
     public void addMinuteStat(StatLine line)
     {
         int rowindex = getMinuteIndex(line.getMinute());
-        if (rowindex >= m_capacity)
+        if (rowindex < 0 || rowindex >= getCapacity())
         {
             return;
         }
@@ -86,5 +86,12 @@ public class Stats {
     public ArrayList<String> dumpCorrelation(ArrayList<String> linelist)
     {
         return m_frame.dumpCorrelation(linelist);
+    }
+
+    /**
+     * @return the m_capacity
+     */
+    public int getCapacity() {
+        return m_capacity;
     }
 }
