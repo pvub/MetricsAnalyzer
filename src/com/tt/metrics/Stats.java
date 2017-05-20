@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
+import org.apache.commons.math3.stat.regression.SimpleRegression;
 
 /**
  *
@@ -43,41 +44,11 @@ public class Stats {
         m_frame.addRowDetail(container);
     }
     
-//    public void addMinuteStat(StatLine min)
-//    {
-//        if (m_beginning_minute == 0) 
-//        {
-//            m_beginning_minute = min.getMinute();
-//        }
-//        else
-//        {
-//            long duration = m_beginning_minute - min.getMinute();
-//            if (duration > 0) {
-//                return;
-//            }
-//        }
-//        
-//        // Check if we have a StatLine for this Minute
-//        long index = min.getMinute() - m_beginning_minute;
-//        if (index >= m_stat_lines.size())
-//        {
-//            m_stat_lines.add(min);
-//        }
-//        else
-//        {
-//            StatLine line = m_stat_lines.get((int)index);
-//            line.apply(min);
-//        }
-//    }
+    public void performSimpleRegression(int col1, int col2, double predict)
+    {
+        this.m_frame.performSimpleRegression(col1, col2, predict);
+    }
     
-//    public ArrayList<String> dumpAsList(ArrayList<String> statlist)
-//    {
-//        for (StatLine line : m_stat_lines)
-//        {
-//            statlist.add(line.toString());
-//        }
-//        return statlist;
-//    }
     public ArrayList<String> dumpAsList(ArrayList<String> statlist)
     {
         return m_frame.dumpAsList(statlist);

@@ -39,6 +39,11 @@ public class MetricsConfig {
         return m_dataPoints.dumpHeaders();
     }
     
+    public String getDataPointHeader(int field_index)
+    {
+        return m_dataPoints.getDataPoint(field_index).getField();
+    }
+    
     public void load(String configFilePath) {
         this.m_filepath = configFilePath;
         m_props = new Properties();
@@ -159,13 +164,27 @@ public class MetricsConfig {
         {
             m_dataPoints.addField(filekey, field);
             String fieldpattern = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_PATTERN);
+            String fieldextract = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_EXTRACT_FEILD);
             if (mfile.getType() == MetricsSource.MetricType.SINGLE) {
                 // Unsupported
             } else {
                 String summarytype = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_SUMMARY);
                 MetricsSource.SummaryType stype = getMetricsFieldSummaryType(summarytype);
-                mfile.addFieldWithPattern(field, fieldpattern, filekey, m_dataPoints, stype);
+                if (fieldpattern != null) {
+                    mfile.addFieldWithPattern(field, fieldpattern, filekey, m_dataPoints, stype);
+                }
+                if (fieldextract != null) {
+                    mfile.addExtractField(field, fieldextract, filekey, m_dataPoints, stype);
+                }
             }
+        }
+        
+        // Set Ignore patterns
+        String ignore_patterns = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + Definitions.METRICS_IGNORE_PATTERNS);
+        if (ignore_patterns != null)
+        {
+            String ignore_array[] = ignore_patterns.split("\\|");
+            mfile.addIgnorePatterns(ignore_array);
         }
         
         SplunkHandler handler = (SplunkHandler) MetricsHandlerFactory.getHandler(mfile);

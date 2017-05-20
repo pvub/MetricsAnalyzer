@@ -33,4 +33,6 @@ public class Definitions {
     public static String USERNAME                   = "username";
     public static String PASSWORD                   = "password";
     public static String QUERY                      = "query";
+    public static String METRICS_EXTRACT_FEILD      = "extract_field";
+    public static String METRICS_IGNORE_PATTERNS    = "ignore_patterns";
 }

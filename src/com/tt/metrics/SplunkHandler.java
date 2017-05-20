@@ -12,6 +12,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.TimeZone;
 
 /**
@@ -29,7 +30,7 @@ public class SplunkHandler implements MetricsHandler
     
     public SplunkHandler(MetricsSplunkSource sourceconfig) 
     {
-        s_formatter.setTimeZone(TimeZone.getTimeZone("CDT"));
+        //s_formatter.setTimeZone(TimeZone.getTimeZone("CDT"));
         m_sourceconfig = sourceconfig;
     }
     
@@ -88,8 +89,9 @@ public class SplunkHandler implements MetricsHandler
                 }
                 for (Event event : searchResults) 
                 {
+                    System.out.println("_time:  " + event.get("_time"));
                     System.out.println("_raw:  " + event.get("_raw"));
-                    ParseLineSummary(config, event.get("_raw"), container);
+                    ParseLineSummary(config, event.get("_time"), event.get("_raw"), container);
                 }
             }
             reader.close();
@@ -110,15 +112,15 @@ public class SplunkHandler implements MetricsHandler
         return container;
     }
     
-    private boolean ParseLineSummary(MetricsConfig config, String input, Stats stats)
+    private boolean ParseLineSummary(MetricsConfig config, String time_str, String input, Stats stats)
     {
         Date dt = null;
-        String[] tokens = input.split("\\|");
+        //String[] tokens = input.split("\\|");
 
         // Get Time from Metrics line
         try
         {
-            dt = s_formatter.parse(tokens[0].trim());
+            dt = s_formatter.parse(time_str.trim());
         } catch (ParseException e) {
             System.out.println("Date parse error: " + e.getMessage());
         }
@@ -128,7 +130,8 @@ public class SplunkHandler implements MetricsHandler
             return false;
         }
         // Check if we have any of our patterns in the line
-        ArrayList<String> matched = m_sourceconfig.getMatchedKeys(tokens[5]);
+        HashMap<String, Double> matched = new HashMap<String, Double>();
+        m_sourceconfig.getMatchedKeys(input /*tokens[5]*/, matched);
         if (matched.isEmpty())
         {
             return false;
@@ -151,12 +154,12 @@ public class SplunkHandler implements MetricsHandler
             line.setDate(dt);
         }
         // Create DataPoint
-        for (String key : matched)
+        for (String key : matched.keySet())
         {
             DataPoint dp = config.getDataPoints().getDataPoint(key);
             if (dp.getIndex() != DataPoints.getMax())
             {
-                line.setDataPoint(dp, 1.0);
+                line.setDataPoint(dp, matched.get(key));
             }
         }
         m_lines[rowindex] = line;

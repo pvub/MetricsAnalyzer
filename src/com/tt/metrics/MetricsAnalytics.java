@@ -46,7 +46,7 @@ public class MetricsAnalytics
         String header = config.dumpDataPointsHeader();
         statlist.add(header);
         container.dumpAsList(statlist);
-        statlist = container.dumpCorrelation(statlist);
+//        statlist = container.dumpCorrelation(statlist);
         Path outfile = Paths.get(config.getOutputFilepath());
         try
         {
@@ -54,6 +54,22 @@ public class MetricsAnalytics
         } catch (IOException e) {
             System.out.println("Unable to write to output file");
         }
+        
+        // Perform Regression
+//        String field1 = config.getDataPointHeader(0);
+//        String field2 = config.getDataPointHeader(2);
+//        System.out.println("Performing regression between " + field1 + " and " + field2);
+//        container.performSimpleRegression(0, 2, 100.0d);
+//        // Perform Regression
+//        field1 = config.getDataPointHeader(0);
+//        field2 = config.getDataPointHeader(3);
+//        System.out.println("Performing regression between " + field1 + " and " + field2);
+//        container.performSimpleRegression(0, 3, 100.0d);
+//        // Perform Regression
+//        field1 = config.getDataPointHeader(0);
+//        field2 = config.getDataPointHeader(6);
+//        System.out.println("Performing regression between " + field1 + " and " + field2);
+//        container.performSimpleRegression(0, 6, 100.0d);
     }
     
 }
