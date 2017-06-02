@@ -106,7 +106,7 @@ public class SplunkHandler implements MetricsHandler
             if (line != null)
             {
                 System.out.println("Stat Line: " + line.toString());
-                container.addMinuteStat(line);
+                container.addStat(line);
             }
         }
         return container;
@@ -140,7 +140,7 @@ public class SplunkHandler implements MetricsHandler
         // Get the StatLine for this time slot
         long minute = dt.getTime() / (1000 * 60);
         // Calculate row index
-        int rowindex = stats.getMinuteIndex(minute);
+        int rowindex = stats.getTimeMarkerIndex(minute);
         // Validate if the idex is in range
         if (rowindex < 0 || rowindex >= stats.getCapacity())
         {

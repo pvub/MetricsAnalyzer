@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 /**
@@ -35,24 +36,32 @@ public class MetricsAnalytics
             return;
         }
         
-        ArrayList<MetricsHandler> metricshandlers = config.getMetricsHandlers();
-        Stats container = new Stats(config);
-        for (MetricsHandler mHandler : metricshandlers)
-        {
-            container = mHandler.load(config, container);
-        }
-        
-        ArrayList<String> statlist = new ArrayList<String>();
-        String header = config.dumpDataPointsHeader();
-        statlist.add(header);
-        container.dumpAsList(statlist);
-//        statlist = container.dumpCorrelation(statlist);
-        Path outfile = Paths.get(config.getOutputFilepath());
         try
         {
-            Files.write(outfile, statlist, Charset.forName("UTF-8"));
-        } catch (IOException e) {
-            System.out.println("Unable to write to output file");
+            ArrayList<MetricsHandler> metricshandlers = config.getMetricsHandlers();
+            Stats container = new Stats(config, TimeUnit.MINUTES);
+            
+            for (MetricsHandler mHandler : metricshandlers)
+            {
+                container = mHandler.load(config, container);
+            }
+
+            ArrayList<String> statlist = new ArrayList<String>();
+            String header = config.dumpDataPointsHeader();
+            statlist.add(header);
+            container.dumpAsList(statlist);
+    //        statlist = container.dumpCorrelation(statlist);
+            Path outfile = Paths.get(config.getOutputFilepath());
+            try
+            {
+                Files.write(outfile, statlist, Charset.forName("UTF-8"));
+            } catch (IOException e) {
+                System.out.println("Unable to write to output file");
+            }
+        }
+        catch (Exception e)
+        {
+            System.out.println("Unable to run. e=" + e.getMessage());
         }
         
         // Perform Regression

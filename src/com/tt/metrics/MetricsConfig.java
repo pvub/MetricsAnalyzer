@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Configuration Container
@@ -350,5 +351,30 @@ public class MetricsConfig {
     public boolean hasOutputFilepath()
     {
         return (m_outfilepath != null);
+    }
+    public long getTimeUnits(TimeUnit unit) throws Exception
+    {
+        if (TimeUnit.MINUTES.compareTo(unit) < 0)
+        {
+            throw new Exception("Time Unit too small");
+        }
+        return (TimeUnit.MINUTES.convert(m_endMinute, unit)
+                - TimeUnit.MINUTES.convert(m_startMinute, unit));
+    }
+    public long getStartTimeMarker(TimeUnit unit) throws Exception
+    {
+        if (TimeUnit.MINUTES.compareTo(unit) < 0)
+        {
+            throw new Exception("Time Unit too small");
+        }
+        return TimeUnit.MINUTES.convert(m_startMinute, unit);
+    }
+    public long getEndTimeMarker(TimeUnit unit) throws Exception
+    {
+        if (TimeUnit.MINUTES.compareTo(unit) < 0)
+        {
+            throw new Exception("Time Unit too small");
+        }
+        return TimeUnit.MINUTES.convert(m_endMinute, unit);
     }
 }

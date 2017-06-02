@@ -49,7 +49,7 @@ public class MetricsFileHandler implements MetricsHandler
         if (m_sourceconfig.getType() == MetricsSource.MetricType.SUMMARY && m_multistatline != null)
         {
             System.out.println("Stat Line: " + m_multistatline.toString());
-            container.addMinuteStat(m_multistatline);            
+            container.addStat(m_multistatline);            
         }
         
         return container;
@@ -101,7 +101,7 @@ public class MetricsFileHandler implements MetricsHandler
             index++;
         }
         System.out.println("Stat Line: " + statline.toString());
-        stats.addMinuteStat(statline);
+        stats.addStat(statline);
         
         return true;
     }
@@ -137,7 +137,7 @@ public class MetricsFileHandler implements MetricsHandler
             if (newminute != existingminute)
             {
                 System.out.println("Stat Line: " + m_multistatline.toString());
-                stats.addMinuteStat(m_multistatline);
+                stats.addStat(m_multistatline);
                 m_summarydate = dt;
                 m_multistatline = new StatLine(mFile);
                 m_multistatline.setDate(dt);

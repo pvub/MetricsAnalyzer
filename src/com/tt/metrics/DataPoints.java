@@ -38,7 +38,11 @@ public class DataPoints {
     public String dumpHeaders()
     {
         StringBuilder sb = new StringBuilder();
-        sb.append("time").append(",");
+        sb.append("time").append(",")
+          .append("hour").append(",")
+          .append("day").append(",")
+          .append("week").append(",")
+          .append("month").append(",");
         for (DataPoint dp : m_arrayDataPoints)
         {
             sb.append(dp.getField()).append(",");

@@ -12,12 +12,19 @@ public class DateHelper {
     private static int MINUTE_COUNT = 1000 * 60;
     // Date Time format from Log lines
     private static String s_expectedPattern = "yyyy-MM-dd HH:mm:ss";
+    private static String s_outputPattern = "yyyy-MM-dd HH:mm:ss,k,EEE,ww,MMM";
     // Formatter to use the set pattern
     private static SimpleDateFormat s_formatter = new SimpleDateFormat(s_expectedPattern);
+    private static SimpleDateFormat s_outputformatter = new SimpleDateFormat(s_outputPattern);
     
     public static String format(Date dt)
     {
         return s_formatter.format(dt);
+    }
+    
+    public static String formatCSV(Date dt)
+    {
+        return s_outputformatter.format(dt);
     }
     
     public static long getMinutes(Date dt)

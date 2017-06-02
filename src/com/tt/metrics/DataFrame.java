@@ -3,6 +3,7 @@ package com.tt.metrics;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
@@ -13,11 +14,12 @@ import org.apache.commons.math3.stat.regression.SimpleRegression;
  * @author Udai
  */
 public class DataFrame {
-        
+    private TimeUnit   m_unit;
     private double[][] m_points;
     private Date       m_startdate;
     
-    DataFrame(MetricsConfig config) {
+    public DataFrame(MetricsConfig config, TimeUnit unit) {
+        this.m_unit = unit;
         this.m_points = new double[config.getMinutes()][DataPoints.getMax()];
         this.m_startdate = config.getStartTime();
     }
@@ -70,7 +72,7 @@ public class DataFrame {
         Date dt = this.m_startdate;
         while (rowIndex < rows)
         {
-            sb.append(DateHelper.format(dt)).append(",");
+            sb.append(DateHelper.formatCSV(dt)).append(",");
             int colIndex = 0;
             while (colIndex < cols)
             {

@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.concurrent.TimeUnit;
 
 /**
  *
@@ -94,6 +95,10 @@ public class StatLine {
     public long getMinute()
     {
         return m_minute;
+    }
+    public long getTimeMarker(TimeUnit unit)
+    {
+        return TimeUnit.MINUTES.convert(m_minute, unit);
     }
     
     public void apply(StatLine statline)
