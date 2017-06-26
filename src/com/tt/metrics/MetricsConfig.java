@@ -130,14 +130,10 @@ public class MetricsConfig {
         String fields_array[] = fields.split("\\|");
         for (String field : fields_array) 
         {
-            m_dataPoints.addField(filekey, field);
-            if (mfile.getType() == MetricsSource.MetricType.SINGLE) {
-                mfile.addField(field, filekey, m_dataPoints);
-            } else {
-                String summarytype = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_SUMMARY);
-                MetricsSource.SummaryType stype = getMetricsFieldSummaryType(summarytype);
-                mfile.addField(field, filekey, m_dataPoints, stype);
-            }
+            String summarytype = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_SUMMARY);
+            MetricsSource.SummaryType stype = getMetricsFieldSummaryType(summarytype);
+            m_dataPoints.addField(filekey, field, stype);
+            mfile.addField(field, filekey, m_dataPoints, stype);
         }
         
         MetricsFileHandler handler = (MetricsFileHandler) MetricsHandlerFactory.getHandler(mfile);
@@ -163,20 +159,16 @@ public class MetricsConfig {
         String fields_array[] = fields.split("\\|");
         for (String field : fields_array) 
         {
-            m_dataPoints.addField(filekey, field);
             String fieldpattern = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_PATTERN);
             String fieldextract = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_EXTRACT_FEILD);
-            if (mfile.getType() == MetricsSource.MetricType.SINGLE) {
-                // Unsupported
-            } else {
-                String summarytype = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_SUMMARY);
-                MetricsSource.SummaryType stype = getMetricsFieldSummaryType(summarytype);
-                if (fieldpattern != null) {
-                    mfile.addFieldWithPattern(field, fieldpattern, filekey, m_dataPoints, stype);
-                }
-                if (fieldextract != null) {
-                    mfile.addExtractField(field, fieldextract, filekey, m_dataPoints, stype);
-                }
+            String summarytype = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_SUMMARY);
+            MetricsSource.SummaryType stype = getMetricsFieldSummaryType(summarytype);
+            m_dataPoints.addField(filekey, field, stype);
+            if (fieldpattern != null) {
+                mfile.addFieldWithPattern(field, fieldpattern, filekey, m_dataPoints, stype);
+            }
+            if (fieldextract != null) {
+                mfile.addExtractField(field, fieldextract, filekey, m_dataPoints, stype);
             }
         }
         
@@ -209,15 +201,11 @@ public class MetricsConfig {
         String fields_array[] = fields.split("\\|");
         for (String field : fields_array) 
         {
-            m_dataPoints.addField(filekey, field);
             String fieldquery = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_QUERY);
-            if (mfile.getType() == MetricsSource.MetricType.SINGLE) {
-                // Unsupported
-            } else {
-                String summarytype = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_SUMMARY);
-                MetricsSource.SummaryType stype = getMetricsFieldSummaryType(summarytype);
-                mfile.addFieldWithQuery(field, fieldquery, filekey, m_dataPoints, stype);
-            }
+            String summarytype = getProperty(Definitions.METRICS_FILE_KEY + filekey + "." + field + "." + Definitions.METRICS_FIELD_SUMMARY);
+            MetricsSource.SummaryType stype = getMetricsFieldSummaryType(summarytype);
+            m_dataPoints.addField(filekey, field, stype);
+            mfile.addFieldWithQuery(field, fieldquery, filekey, m_dataPoints, stype);
         }
         
         GraphiteRestHandler handler = (GraphiteRestHandler) MetricsHandlerFactory.getHandler(mfile);
@@ -226,14 +214,7 @@ public class MetricsConfig {
     }
     
     private MetricsSource.MetricType getMetricsFileType(String type) {
-        MetricsSource.MetricType mtype = MetricsSource.MetricType.SINGLE;
-        if (type.equalsIgnoreCase(Definitions.METRICS_TYPE_SINGLE)) {
-            mtype = MetricsSource.MetricType.SINGLE;
-        }
-        if (type.equalsIgnoreCase(Definitions.METRICS_TYPE_SUMMARY)) {
-            mtype = MetricsSource.MetricType.SUMMARY;
-        }
-        return mtype;
+        return MetricsSource.MetricType.SUMMARY;
     }
     
     private MetricsSource.MetricSource getMetricsSource(String source) {
@@ -325,10 +306,6 @@ public class MetricsConfig {
     {
         return m_endMinute;
     }
-    public int getMinutes()
-    {
-        return (int) (m_endMinute - m_startMinute);
-    }
     public boolean isBetweenSearchDates(Date dt)
     {
         return (dt.after(m_startTime) 
@@ -352,29 +329,29 @@ public class MetricsConfig {
     {
         return (m_outfilepath != null);
     }
-    public long getTimeUnits(TimeUnit unit) throws Exception
+    public int getTimeUnits(TimeUnit unit) throws Exception
     {
-        if (TimeUnit.MINUTES.compareTo(unit) < 0)
+        if (unit.compareTo(TimeUnit.MINUTES) < 0)
         {
             throw new Exception("Time Unit too small");
         }
-        return (TimeUnit.MINUTES.convert(m_endMinute, unit)
-                - TimeUnit.MINUTES.convert(m_startMinute, unit));
+        return (int)(  unit.convert(m_endMinute, TimeUnit.MINUTES)
+                     - unit.convert(m_startMinute, TimeUnit.MINUTES));
     }
     public long getStartTimeMarker(TimeUnit unit) throws Exception
     {
-        if (TimeUnit.MINUTES.compareTo(unit) < 0)
+        if (unit.compareTo(TimeUnit.MINUTES) < 0)
         {
             throw new Exception("Time Unit too small");
         }
-        return TimeUnit.MINUTES.convert(m_startMinute, unit);
+        return unit.convert(m_startMinute, TimeUnit.MINUTES);
     }
     public long getEndTimeMarker(TimeUnit unit) throws Exception
     {
-        if (TimeUnit.MINUTES.compareTo(unit) < 0)
+        if (unit.compareTo(TimeUnit.MINUTES) < 0)
         {
             throw new Exception("Time Unit too small");
         }
-        return TimeUnit.MINUTES.convert(m_endMinute, unit);
+        return unit.convert(m_endMinute, TimeUnit.MINUTES);
     }
 }

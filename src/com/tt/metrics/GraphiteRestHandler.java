@@ -22,7 +22,6 @@ public class GraphiteRestHandler implements MetricsHandler
     private static SimpleDateFormat s_graphiteformatter = new SimpleDateFormat(s_graphiteDatePattern);
     private MetricsGraphiteSource m_sourceconfig = null;
     private Gson gson = new Gson();
-    private StatLine[] m_lines = null;
     
     public GraphiteRestHandler(MetricsGraphiteSource sourceconfig) 
     {
@@ -37,10 +36,8 @@ public class GraphiteRestHandler implements MetricsHandler
      * @return 
      */
     @Override
-    public Stats load(MetricsConfig config, Stats container) 
+    public void load(MetricsConfig config, StatLineProcessor processor) 
     {
-        // Allocate Array of StatLines
-        m_lines = new StatLine[container.getCapacity()];
         // Build the URL
         StringBuilder sb = new StringBuilder();
         sb.append(m_sourceconfig.getQueryString());
@@ -51,11 +48,10 @@ public class GraphiteRestHandler implements MetricsHandler
         RestAPIHelper apiHelper = new RestAPIHelper(sb.toString());
         String response = apiHelper.getData();
         // Process Response
-        ProcessResponse(config, response, container);
-        return container;
+        ProcessResponse(config, response, processor);
     }
     
-    private void ProcessResponse(MetricsConfig config, String response, Stats container) 
+    private void ProcessResponse(MetricsConfig config, String response, StatLineProcessor processor) 
     {
         System.out.println(response);
         Graphite[] data = gson.fromJson(response, Graphite[].class);
@@ -67,20 +63,12 @@ public class GraphiteRestHandler implements MetricsHandler
             System.out.println(" trimmed target=" + trimmedTarget);
             String key = m_sourceconfig.getKeyForTarget(trimmedTarget);
             // Process data from each Graphite target
-            ProcessTarget(config, g, key, container);
+            ProcessTarget(config, g, key, processor);
         }
-        // Now add all StatLines to the container
-        for (StatLine line : m_lines)
-        {
-            if (line != null)
-            {
-                System.out.println("Stat Line: " + line.toString());
-                container.addStat(line);
-            }
-        }
+        processor.processComplete();
     }
     
-    private void ProcessTarget(MetricsConfig config, Graphite target, String key, Stats container)
+    private void ProcessTarget(MetricsConfig config, Graphite target, String key, StatLineProcessor processor)
     {
         final DecimalFormat doubleFormatter = new DecimalFormat("###############");
         final String        searchDates     = config.getFromattedSearchDates();
@@ -101,29 +89,15 @@ public class GraphiteRestHandler implements MetricsHandler
                 continue;
             }
             
-            // Get the StatLine for this time slot
-            long minute = dt.getTime() / (1000 * 60);
-            // Calculate row index
-            int rowindex = container.getTimeMarkerIndex(minute);
-            // Validate if the idex is in range
-            if (rowindex < 0 || rowindex >= container.getCapacity())
-            {
-                return;
-            }
-            // Get a StatLine for the index
-            StatLine line = m_lines[rowindex];
-            if (line == null)
-            {
-                line = new StatLine(m_sourceconfig);
-                line.setDate(dt);
-            }
+            StatLine line = new StatLine(m_sourceconfig);
+            line.setDate(dt);
             // Create DataPoint
             DataPoint d = config.getDataPoints().getDataPoint(key);
             if (d.getIndex() != DataPoints.getMax())
             {
                 line.setDataPoint(d, val);
             }
-            m_lines[rowindex] = line;
+            processor.processLine(line);
         }
     }
     

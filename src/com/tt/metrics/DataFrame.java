@@ -1,5 +1,7 @@
 package com.tt.metrics;
 
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -17,10 +19,13 @@ public class DataFrame {
     private TimeUnit   m_unit;
     private double[][] m_points;
     private Date       m_startdate;
+    private static NumberFormat df = new DecimalFormat("0.00");
     
-    public DataFrame(MetricsConfig config, TimeUnit unit) {
+    public DataFrame(MetricsConfig config, TimeUnit unit) 
+            throws Exception
+    {
         this.m_unit = unit;
-        this.m_points = new double[config.getMinutes()][DataPoints.getMax()];
+        this.m_points = new double[config.getTimeUnits(unit)][DataPoints.getMax()];
         this.m_startdate = config.getStartTime();
     }
     
@@ -42,7 +47,7 @@ public class DataFrame {
             ++rowIndex;
         }
     }
-    
+        
     public void addRowDetail(RowContainer container) 
     {
         int valindex = 0;
@@ -63,7 +68,7 @@ public class DataFrame {
         return linelist;
     }
     
-    public ArrayList<String> dumpAsList(ArrayList<String> statlist)
+    public void dumpAsList(OutputProcessor processor)
     {
         StringBuilder sb = new StringBuilder();
         int cols = m_points[0].length;
@@ -72,19 +77,18 @@ public class DataFrame {
         Date dt = this.m_startdate;
         while (rowIndex < rows)
         {
-            sb.append(DateHelper.formatCSV(dt)).append(",");
+            sb.append(DateHelper.formatCSV(m_unit,dt)).append(",");
             int colIndex = 0;
             while (colIndex < cols)
             {
-                sb.append(m_points[rowIndex][colIndex]).append(",");
+                sb.append(df.format(m_points[rowIndex][colIndex])).append(",");
                 ++colIndex;
             }
-            statlist.add(sb.toString());
+            processor.processLine(sb.toString());
             sb = new StringBuilder();
             ++rowIndex;
-            dt = DateHelper.nextMinute(dt);
+            dt = DateHelper.next(m_unit, dt);
         }
-        return statlist;
     }
     
     public ArrayList<String> dumpMatrixAsList(ArrayList<String> linelist, RealMatrix matrix)

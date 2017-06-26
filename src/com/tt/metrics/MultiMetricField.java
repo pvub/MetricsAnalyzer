@@ -23,9 +23,17 @@ public class MultiMetricField extends MetricField
     {
         return ds.getMean();
     }
+    public long getCount()
+    {
+        return ds.getN();
+    }
     public double getSummaryValue(MetricsSource.SummaryType mtype)
     {
         double value = 0.0;
+        if (ds.getN() < 1)
+        {
+            return value;
+        }
         switch (mtype)
         {
             case COUNT:

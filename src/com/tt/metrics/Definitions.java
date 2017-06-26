@@ -15,7 +15,6 @@ public class Definitions {
     public static String METRICS_FILE_PATH          = "path";
     public static String METRICS_FILE_TYPE          = "type";
     public static String METRICS_FILE_FIELDS        = "fields";
-    public static String METRICS_TYPE_SINGLE        = "single";
     public static String METRICS_TYPE_SUMMARY       = "summary";
     public static String METRICS_FIELD_SUMMARY      = "summary";
     public static String METRICS_FIELD_PATTERN      = "pattern";
@@ -35,4 +34,9 @@ public class Definitions {
     public static String QUERY                      = "query";
     public static String METRICS_EXTRACT_FEILD      = "extract_field";
     public static String METRICS_IGNORE_PATTERNS    = "ignore_patterns";
+    public static String METRICS_INTERVAL_MINUTE    = "minute";
+    public static String METRICS_INTERVAL_HOUR      = "hour";
+    public static String METRICS_INTERVAL_DAY       = "day";
+    public static String METRICS_OUTPUT             = "output";
+    
 }

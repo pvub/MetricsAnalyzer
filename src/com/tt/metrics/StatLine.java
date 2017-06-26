@@ -1,5 +1,7 @@
 package com.tt.metrics;
 
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -11,19 +13,15 @@ import java.util.concurrent.TimeUnit;
  * @author Udai
  */
 public class StatLine {
-    private double[] m_dataPoints;
     private MultiMetricField[] m_summaryPoints;
     private Date     m_date = null;
     private long     m_minute = 0;
     private HashSet<DataPoint> m_setpoints = null;
-    private MetricsSource.MetricType m_metricType;
-    private MetricsSource m_metricsFile;
+    private static NumberFormat df = new DecimalFormat("0.00");
     
     public StatLine(MetricsSource mFile) 
     {
-        m_metricType = mFile.getType();
         m_setpoints = mFile.getDataPoints();
-        m_dataPoints = new double[DataPoints.getMax()];
         if (mFile.getType() == MetricsSource.MetricType.SUMMARY)
         {
             m_summaryPoints = new MultiMetricField[DataPoints.getMax()];
@@ -34,7 +32,19 @@ public class StatLine {
                 ++index;
             }
         }
-        this.m_metricsFile = mFile;
+    }
+    
+    public StatLine(MetricsConfig config) 
+    {
+        m_setpoints = new HashSet<DataPoint>();
+        config.getDataPoints().fillDataPoints(m_setpoints);
+        m_summaryPoints = new MultiMetricField[DataPoints.getMax()];
+        int index = 0;
+        while(index < DataPoints.getMax())
+        {
+            m_summaryPoints[index] = new MultiMetricField();
+            ++index;
+        }
     }
     
     public HashSet<DataPoint> getSetPoints()
@@ -55,26 +65,12 @@ public class StatLine {
     
     public void setDataPoint(DataPoint point, double value)
     {
-        if (m_metricType == MetricsSource.MetricType.SUMMARY)
-        {
-            m_summaryPoints[point.getIndex()].addValue(value);
-        }
-        else
-        {
-            m_dataPoints[point.getIndex()] = value;
-        }
+        m_summaryPoints[point.getIndex()].addValue(value);
     }
     
     public double getDataPointValue(DataPoint point)
     {
-        if (m_metricType == MetricsSource.MetricType.SUMMARY)
-        {
-            return m_summaryPoints[point.getIndex()].getSummaryValue(m_metricsFile.getSummaryTypeForDataPoint(point));
-        }
-        else
-        {
-            return m_dataPoints[point.getIndex()];
-        }
+        return m_summaryPoints[point.getIndex()].getSummaryValue(point.getSummaryType());
     }
     
     public double getSummaryValue(DataPoint point, MetricsSource.SummaryType mtype)
@@ -98,13 +94,20 @@ public class StatLine {
     }
     public long getTimeMarker(TimeUnit unit)
     {
-        return TimeUnit.MINUTES.convert(m_minute, unit);
+        return unit.convert(m_minute, TimeUnit.MINUTES);
     }
     
     public void apply(StatLine statline)
     {
+        if (this.m_date == null)
+        {
+            this.setDate(statline.getDate());
+        }
         for (DataPoint dp : statline.getSetPoints())
         {
+            // Make sure we tag the DataPoint as Set in our StatLine
+            // as we will be merging different stat lines
+            m_setpoints.add(dp);
             setDataPoint(dp, statline.getDataPointValue(dp));
         }
     }
@@ -114,20 +117,12 @@ public class StatLine {
     {
         StringBuilder sb = new StringBuilder();
         sb.append(DateHelper.format(m_date)).append(" ");
-        if (m_metricType == MetricsSource.MetricType.SUMMARY)
+        for (DataPoint dp : m_setpoints)
         {
-            for (DataPoint dp : m_setpoints)
-            {
-                MultiMetricField field = m_summaryPoints[dp.getIndex()];
-                sb.append(field.getSummaryValue(m_metricsFile.getSummaryTypeForDataPoint(dp))).append(" ");
-            }
-        }
-        else
-        {
-            for (double val : m_dataPoints)
-            {
-                sb.append(val).append(" ");
-            }
+            MultiMetricField field = m_summaryPoints[dp.getIndex()];
+            sb.append(df.format(field.getSummaryValue(dp.getSummaryType())))
+              .append("(").append(field.getCount()).append(")")
+              .append(" ");
         }
         return sb.toString();
     }

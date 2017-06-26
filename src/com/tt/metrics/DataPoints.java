@@ -2,6 +2,7 @@ package com.tt.metrics;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 /**
  * Collection of Fields we extract from all metric files
@@ -17,10 +18,15 @@ public class DataPoints {
         m_arrayDataPoints = new ArrayList<DataPoint>();
     }
     
-    public void addField(String filekey, String field) {
-        DataPoint dp = new DataPoint(filekey, field, s_maxPointIndex++);
+    public void addField(String filekey, String field, MetricsSource.SummaryType sType) {
+        DataPoint dp = new DataPoint(filekey, field, s_maxPointIndex++, sType);
         m_arrayDataPoints.add(dp);
         m_dataPoints.put(filekey + "-" + field, dp);
+    }
+    
+    public void fillDataPoints(HashSet<DataPoint> dps)
+    {
+        dps.addAll(this.m_arrayDataPoints);
     }
     
     public DataPoint getDataPoint(String label) {

@@ -26,7 +26,7 @@ public class MetricsFileHandler implements MetricsHandler
     }
     
     @Override
-    public Stats load(MetricsConfig config, Stats container)
+    public void load(MetricsConfig config, StatLineProcessor processor) 
     {
         System.out.println("Loading: " + m_sourceconfig.getFilename());
         try (Stream<String> stream = Files.lines(Paths.get(m_sourceconfig.getFilename()))) 
@@ -34,11 +34,11 @@ public class MetricsFileHandler implements MetricsHandler
             stream.forEach((String str) -> {
                 if (m_sourceconfig.getType() == MetricsSource.MetricType.SUMMARY)
                 {
-                    ParseLineSummary(config, str, container, m_sourceconfig);
+                    ParseLineSummary(config, str, processor, m_sourceconfig);
                 }
                 else
                 {
-                    ParseLine(config, str, container, m_sourceconfig);
+                    ParseLine(config, str, processor, m_sourceconfig);
                 }
             });
 
@@ -46,16 +46,16 @@ public class MetricsFileHandler implements MetricsHandler
             e.printStackTrace();
         }
         
-        if (m_sourceconfig.getType() == MetricsSource.MetricType.SUMMARY && m_multistatline != null)
-        {
-            System.out.println("Stat Line: " + m_multistatline.toString());
-            container.addStat(m_multistatline);            
-        }
-        
-        return container;
+//        if (m_sourceconfig.getType() == MetricsSource.MetricType.SUMMARY && m_multistatline != null)
+//        {
+//            System.out.println("Stat Line: " + m_multistatline.toString());
+//            container.addStat(m_multistatline);            
+//        }
+//        
+//        return container;
     }
     
-    private boolean ParseLine(MetricsConfig config, String input, Stats stats, MetricsSource mFile)
+    private boolean ParseLine(MetricsConfig config, String input, StatLineProcessor processor, MetricsSource mFile)
     {
         Date dt = null;
         String[] pairs = input.split(" ");
@@ -101,12 +101,12 @@ public class MetricsFileHandler implements MetricsHandler
             index++;
         }
         System.out.println("Stat Line: " + statline.toString());
-        stats.addStat(statline);
+        processor.processLine(statline);
         
         return true;
     }
 
-    private boolean ParseLineSummary(MetricsConfig config, String input, Stats stats, MetricsSource mFile)
+    private boolean ParseLineSummary(MetricsConfig config, String input, StatLineProcessor processor, MetricsSource mFile)
     {
         Date dt = null;
         String[] pairs = input.split(" ");
@@ -137,7 +137,7 @@ public class MetricsFileHandler implements MetricsHandler
             if (newminute != existingminute)
             {
                 System.out.println("Stat Line: " + m_multistatline.toString());
-                stats.addStat(m_multistatline);
+                processor.processLine(m_multistatline);
                 m_summarydate = dt;
                 m_multistatline = new StatLine(mFile);
                 m_multistatline.setDate(dt);

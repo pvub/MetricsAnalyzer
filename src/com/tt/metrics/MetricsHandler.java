@@ -6,6 +6,6 @@ package com.tt.metrics;
  */
 public interface MetricsHandler {
     
-    public Stats load(MetricsConfig config, Stats container);
+    public void load(MetricsConfig config, StatLineProcessor processor);
     
 }

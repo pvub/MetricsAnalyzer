@@ -17,7 +17,6 @@ public class MetricsSource {
     }
     public enum MetricType
     {
-        SINGLE,
         SUMMARY
     }
     public enum SummaryType
@@ -30,7 +29,7 @@ public class MetricsSource {
     }
     private String m_filekey = "";
     private MetricSource m_source = MetricSource.FILE;
-    private MetricType m_type = MetricType.SINGLE;
+    private MetricType m_type = MetricType.SUMMARY;
     
     protected HashSet<String> m_columns = new HashSet<String>();
     protected HashSet<DataPoint> m_datapoints = new HashSet<DataPoint>();

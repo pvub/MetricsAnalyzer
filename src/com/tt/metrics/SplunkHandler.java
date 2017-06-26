@@ -26,11 +26,9 @@ public class SplunkHandler implements MetricsHandler
     private static SimpleDateFormat s_formatter = new SimpleDateFormat(s_expectedPattern);
     private Service m_service = null;
     private MetricsSplunkSource m_sourceconfig = null;
-    private StatLine[] m_lines = null;
     
     public SplunkHandler(MetricsSplunkSource sourceconfig) 
     {
-        //s_formatter.setTimeZone(TimeZone.getTimeZone("CDT"));
         m_sourceconfig = sourceconfig;
     }
     
@@ -55,10 +53,8 @@ public class SplunkHandler implements MetricsHandler
      * @return 
      */
     @Override
-    public Stats load(MetricsConfig config, Stats container) 
+    public void load(MetricsConfig config, StatLineProcessor processor)
     {
-        // Allocate Array of StatLines
-        m_lines = new StatLine[container.getCapacity()];
         // Connect to Splunk
         connect(config);
         
@@ -89,9 +85,9 @@ public class SplunkHandler implements MetricsHandler
                 }
                 for (Event event : searchResults) 
                 {
-                    System.out.println("_time:  " + event.get("_time"));
-                    System.out.println("_raw:  " + event.get("_raw"));
-                    ParseLineSummary(config, event.get("_time"), event.get("_raw"), container);
+//                    System.out.println("_time:  " + event.get("_time"));
+//                    System.out.println("_raw:  " + event.get("_raw"));
+                    ParseLineSummary(config, event.get("_time"), event.get("_raw"), processor);
                 }
             }
             reader.close();
@@ -100,23 +96,12 @@ public class SplunkHandler implements MetricsHandler
             
         }
         
-        // Now add all StatLines to the container
-        for (StatLine line : m_lines)
-        {
-            if (line != null)
-            {
-                System.out.println("Stat Line: " + line.toString());
-                container.addStat(line);
-            }
-        }
-        return container;
+        processor.processComplete();
     }
     
-    private boolean ParseLineSummary(MetricsConfig config, String time_str, String input, Stats stats)
+    private boolean ParseLineSummary(MetricsConfig config, String time_str, String input, StatLineProcessor processor)
     {
         Date dt = null;
-        //String[] tokens = input.split("\\|");
-
         // Get Time from Metrics line
         try
         {
@@ -137,22 +122,8 @@ public class SplunkHandler implements MetricsHandler
             return false;
         }
         
-        // Get the StatLine for this time slot
-        long minute = dt.getTime() / (1000 * 60);
-        // Calculate row index
-        int rowindex = stats.getTimeMarkerIndex(minute);
-        // Validate if the idex is in range
-        if (rowindex < 0 || rowindex >= stats.getCapacity())
-        {
-            return false;
-        }
-        // Get a StatLine for the index
-        StatLine line = m_lines[rowindex];
-        if (line == null)
-        {
-            line = new StatLine(m_sourceconfig);
-            line.setDate(dt);
-        }
+        StatLine line = new StatLine(m_sourceconfig);
+        line.setDate(dt);
         // Create DataPoint
         for (String key : matched.keySet())
         {
@@ -162,8 +133,7 @@ public class SplunkHandler implements MetricsHandler
                 line.setDataPoint(dp, matched.get(key));
             }
         }
-        m_lines[rowindex] = line;
-        
+        processor.processLine(line);
         return true;
     }
 
